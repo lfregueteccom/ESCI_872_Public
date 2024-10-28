@@ -14,8 +14,28 @@ class Position:
     """A Class for handling Position Data"""
     
     # A2.1 Class Initialization and Attributes
-    def __init__(self):
-        pass
+    def __init__(self):        
+        self.times = list()
+        self.latitudes = list()
+        self.longitudes = list()
+        self.heights = list()
+        self.qualities = list()
+        self.num_sats = list()
+        self.hdops = list()        
+        self.undulations = list()
+        self.corr_ages = list()
+        self.corr_stations = list()
+        self.data_path = str()
+        self.proj_pos = np.array([])             
+        self.metadata = {
+                "geodetic_units": "rad",
+                "height_units": "m",
+                "proj_units": "m",
+                "geoid_name": None, 
+                "ellipsoid_name": None, 
+                "height_relative_to": None,
+                "time_basis": "UTC",
+                "proj_str": None}
     
     # A2.2 The String Representation Method
     def __str__(self): 
@@ -271,35 +291,56 @@ class Position:
         print('Drawing Positioning Data')
 
         # A6.0 Determine the central latitude and longitude of the data in the Position object
-        ...
+        central_lat = (max(self.latitudes)+min(self.latitudes))/2*180/pi
+        central_lon = (max(self.longitudes)+min(self.longitudes))/2*180/pi
 
         # A6.1 Create a figure and a title
-        ...
+        fig = plt.figure(figsize=(18, 6))
+        fig.suptitle("Positioning  Data Plots")
 
         # A6.2 Create an Orthographic Coordinate Reference System (Orthographic CRS)
-        ...
+        crs_ortho = ccrs.Orthographic(central_lon, central_lat)
 
         # A6.3 Plot the Orthographic map
-        ...
+        ax1 = fig.add_subplot(1, 2, 1, projection=crs_ortho)
+        ax1.set_global()
 
         # A6.4 Add Oceans, Land and a Graticule
-        ...
+        ax1.add_feature(cartopy.feature.OCEAN)
+        ax1.add_feature(cartopy.feature.LAND, edgecolor='black')
+        ax1.gridlines()
+        ax1.set_title('Orthographic Map of Coverage Area')
 
         # A6.5 Plot the central point
-        ...
+        plt.plot(central_lon, central_lat, marker='o', markersize=7.0, markeredgewidth=2.5,
+                 markerfacecolor='black', markeredgecolor='white',
+                 transform=crs_ortho)
 
         # A6.6 Create a UTM Coordinate Reference System
-        zone_number = int((np.floor((central_lon + 180) / 6) % 60) + 1)
-        ...
-
+        zone_number = int((np.floor((central_lon + 180) / 6) % 60) + 1) # calculate the UTM zone         
+        if central_lat < 0:
+            southern_hemisphere = True
+        else:
+            southern_hemisphere = False
+        crs_utm = ccrs.UTM( zone=zone_number, southern_hemisphere=southern_hemisphere) # creating a CRS in UTUM c=with cartopy
+        
         # A6.7 Plot the UTM map
-        ...
+        ax2 = fig.add_subplot( 1, 2, 2, projection=crs_utm)
+        e_buffer=(np.max(self.longitudes)-np.min(self.longitudes))/10
+        n_buffer=(np.max(self.latitudes)-np.min(self.latitudes))/5
+        ax2.set_extent((np.min(self.longitudes)-e_buffer, np.max(self.longitudes)+e_buffer, np.min(
+            self.latitudes)-n_buffer, np.max(self.latitudes)+n_buffer), crs=crs_utm)
 
         # A6.8 Add oceans, land,  graticule and Title
-        ...
+        ax2.add_feature(cartopy.feature.OCEAN)
+        ax2.add_feature(cartopy.feature.LAND, edgecolor='black')
+        ax2.gridlines()
+        ax2.set_title('UTM Map of Positioning Data')    
 
         # A6.9 Plot the Positions
-        ...
+        for lon, lat in zip(self.longitudes, self.latitudes):
+            plt.plot(lon, lat, marker='.', markersize=2,
+                markerfacecolor='black', transform=crs_utm)
 
         # Display the figure
         plt.show()
@@ -308,43 +349,61 @@ class Position:
     def carto_project(self, projection_name, z_reference):
 
         # A6.9.1 Test the Projection Name
-        ...
+        # Test whether projection_name is a string
+        if not isinstance(projection_name, str):
+            raise RuntimeError(
+                'Position.project(): argument `projection` must be of type str')
 
         # A6.9.2 Keep a List of Implemented Projections
-       ...
+        # Keep a list of projection that are implemented in this function
+        implemented_projections = list()
+        implemented_projections.append('utm')
+        
+        if projection_name.lower() not in implemented_projections:
+            raise RuntimeError(
+                'Position.project(): The projection `' + projection_name + '` is not yet implemented')
         
         # A6.9.4 Ensure a Reference Ellipsoid is Defined
-        ...
+        if self.metadata["ellipsoid_name"] == None:
+            raise RuntimeError(
+                'Position.carto_project(): Requires ellipsoid metadata to be defined!')
         
         # A6.9.5 Create the Projection String
-        ...
+        if projection_name.lower() == 'utm':
+            proj_str = '+proj=utm'
 
             # A6.9.6  Determine Central Latitude and Longitude 
-            ...
-
+            central_lat = (max(self.latitudes)+min(self.latitudes))/2*180/pi
+            central_lon = (max(self.longitudes)+min(self.longitudes))/2*180/pi
+            
             # A6.9.7  Determine The UTM Zone Number
-            ...
+            zone_number = int((np.floor((central_lon + 180) / 6) % 60) + 1) # calculate the zone
+            proj_str+= " +zone={}".format(zone_number)                
             
             # A6.9.8  Determine the Hemisphere
-            ...
+            if central_lat > 0:
+                proj_str += ' +north'
+            else:
+                proj_str += ' +south'
             
             # A6.9.9 Set the Geodetic Datum for the input coordinates
-            ...
+            proj_str += ' +ellps=' + self.metadata["ellipsoid_name"]
 
             # A6.9.10 Set the Geodetic Datum for the output coordinates
-            ...
+            proj_str += ' +datum=' + self.metadata["ellipsoid_name"]
+
 
             # A6.9.11 Set the Units for the output coordinates
-            ...
+            proj_str += ' +units=' + self.metadata["proj_units"]
 
             # A6.9.12 Prevent Proj default behavior
             proj_str += ' +no_defs'
 
             # A6.9.13 Create a Pyproj Object
-            ...
+            proj_obj = proj.Proj(proj_str)
 
             # A6.9.14 Calculate the Easting and Northings
-            ...
+            E, N = proj_obj([l*180/pi for l in self.longitudes],[l*180/pi for l in self.latitudes])
             
             # Create a matrix of positions as 3D column vectors
             if z_reference.lower()=='ortho' or z_reference.lower()=='geoid':

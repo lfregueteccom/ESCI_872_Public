@@ -21,9 +21,26 @@ class WaterLevel:
 
     def __str__(self): 
         # A1.2 The String Representation Method
-        txt = ''
+        txt = "Vessel Metadata: "
+        for key, value in self.metadata.items():
+            txt += key + ": " + str( value) + '\n'
+        
+        txt  = "Location name\t\t: %s\n" % (self.metadata["location_name"])
+        txt  += "Reference Surface Type\t: %s\n" % (self.metadata["datum_type"])
+        txt  += "Reference Surface Name\t: %s\n" % (self.metadata["datum_name"])
+        txt  += "Observation Time Basis\t: %s\n" % (self.metadata["time_basis"])
+        txt  += "Observations Units\t: %s\n" % (self.metadata["units"])    
 
         # A1.3 More on the String Representation Method
+        # The code fragment below assumes that there is some string called txt
+        if len(self.water_levels):           
+            txt += "Start Time\t: %.2f%s\n" % (min(self.times), self.metadata["time_basis"])           
+            txt += "End Time\t: %.2f%s\n" % (max(self.times), self.metadata["time_basis"])
+            txt += "Minimum Water Level\t: %.2f%s\n" % (min(self.water_levels), self.metadata["units"])           
+            txt += "Maximum Water Level\t: %.2f%s\n" % (max(self.water_levels), self.metadata["units"])
+        else:
+            txt += "No time data present\n"
+            txt += "No water level data present"
         return txt
     
     def read_jhc_file(self, fullpath):
