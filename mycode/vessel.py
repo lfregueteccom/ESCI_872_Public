@@ -38,10 +38,13 @@ class Vessel:
         txt  = "Vessel Name           : %s\n" % (self.metadata["name"])
         txt += "Owned by              : %s\n" % (self.metadata["owned_by"])
         txt += "Operated by           : %s\n" % (self.metadata["operated_by"])
-        txt += "Length Over All       : %.0f%s\n" % (self.metadata["loa"], self.metadata["dist_unit"])
+        txt += "Length Over All       : %s\n" % (self.metadata["loa"]) #, self.metadata["dist_unit"])
         txt += "Positioned system     : %s\n" % (self.metadata["pos_source"])
         txt += "Sonar system          : %s\n" % (self.metadata["sonar"])
         txt += "Motion Reference Unit : %s\n" % (self.metadata["mru"])      
+        txt += "Distance unit         : %s\n" % (self.metadata["dist_unit"])
+        txt += "Angle unit            : %s\n" % (self.metadata["angle_unit"])
+        
        
 
         return txt

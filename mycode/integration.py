@@ -92,10 +92,7 @@ class Integration:
             
 
             # A8.2.8 Compound Rotation Matrix at Transmit
-            R_1 = Rz_tx.copy()
-            R_2 = Ry_tx.copy()
-            R_3 = Rx_tx.copy()
-            R_tx.append( R_3@R_2@R_1)
+            R_tx.append(Rz_tx@Ry_tx@Rx_tx)
             
             # A8.2.9 Euler Angle Rotation Matrices at Reception
             Rx_rx = np.array([[1, 0,                     0                   ],
@@ -111,10 +108,7 @@ class Integration:
                               [0, 0,                     1                   ]])
             
             # Calculate the total rotation matrix at receive in the order x, y, z
-            R_1 = Rx_rx.copy()
-            R_2 = Ry_rx.copy()
-            R_3 = Rz_rx.copy()
-            R_rx.append( R_3@R_2@R_1)
+            R_rx.append(Rz_rx@Ry_rx@Rx_rx)
 
             # A8.2.10 Calculate the geo-referenced lever arms at Transmit
             self.lever_arm_pos_tx[:,[ping]]=R_tx[ping]@vessel.lever_arm_pos
