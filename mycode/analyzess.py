@@ -11,7 +11,7 @@ class AnalyzeSS:
         self.SSPs=list()
         
     # B5.0  Plotting the Profiles
-    def draw(self):
+    # def draw(self):
         # B5.0.0  Determine the Number of Profiles to be Plotted
         
         # B5.0.1 Creating the Figure
