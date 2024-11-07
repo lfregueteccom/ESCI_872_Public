@@ -242,8 +242,8 @@ class Position:
         corr_age = None
         corr_station = None
         if not gga_data[13] == "":
-            corr_ages.append(float(gga_data[13]))
-            corr_stations.append(float(gga_data[14][0:-3]))
+            self.corr_ages.append(float(gga_data[13]))
+            self.corr_stations.append(float(gga_data[14][0:-3]))
 
         # For now, ignore the checksum (this would become a computer science assignment
 
@@ -414,5 +414,18 @@ class Position:
             
             # Add the string to the metadata
             self.metadata['proj_str'] = proj_str
+
+# Creating a function for reading ZDA time message            
+def ParseNMEA0183_ZDA( dt_str):
+    obs = dt_str.split(',')
+    time = datetime( 
+        int( obs[4]), 
+        int( obs[3]), 
+        int( obs[2]), 
+        int( obs[1][0:2]), 
+        int( obs[1][2:4]), 
+        int( obs[1][4:6]),
+        int(obs[1][7:])*10000)
+    return time        
         
         
