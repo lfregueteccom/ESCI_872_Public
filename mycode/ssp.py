@@ -150,10 +150,12 @@ class SSP:
         # B3.11 Creating numpy Arrays
         self.proc_depth = np.array(processed_depths)
         self.proc_ss = np.array(processed_ss)
+
         # B3.12 Extend the Profiles to the Surface
         if self.proc_depth[0] > 0:
             self.proc_depth = np.insert(self.proc_depth,0,0)
             self.proc_ss = np.insert(self.proc_ss,0,self.proc_ss[0])
+
         # B3.13 Calculate the Sound Speed Gradients
         self.g = np.divide(np.diff(self.proc_ss),np.diff(self.proc_depth))
         
@@ -167,6 +169,7 @@ class SSP:
           
         # B3.15 Replacing Zero Gradients
         self.g[self.g == 0] = 10**-9
+
         # B3.16 Updating the Profile
         for i in range(1,len(self.g)):
             self.proc_ss[i]=self.proc_ss[i-1]+(self.proc_depth[i] - \
@@ -176,10 +179,9 @@ class SSP:
     
     # B4.0 Create the `ray_trace_twtt` Method
     def ray_trace_twtt(self, d_start, th_start, ss_start, twtt):
-        # pass
-        # print(d_start, th_start, ss_start, twtt)
+ 
         # B4.0.0 Parameter Initialization, Part I
-        c = self.proc_ss
+        c = self.proc_ss      
         d = self.proc_depth
         g = self.g
                 
@@ -208,20 +210,22 @@ class SSP:
         r_curve = -1 / (g[0:] * ray_c)
         th = arccos(c[0:] * ray_c)
         dx = r_curve * (sin(th[1:]) - sin(th[:-1]))
-        h_m = 2/g[0:] * log(c[1:] / c[:-1])
-        dt = h_m + (2 / g) * log((1 + sin(th[:-1])) / (1 + sin(th[1:])))
+        h_m = 2 / g[0:] * log(c[1:] / c[:-1])
+        dt = h_m + (2 / g) * log((1 + sin(th[:-1])) / (1 + sin(th[1:])))      
        
-        # twtt = 2*dt
         
         # B4.0.6 Calculate Inversion Sound Speed
         c_invert = 1/ray_c
-        # print( "Inversion Sound Speed: %.2f"%(c_invert))
+#         print( "Inversion Sound Speed: %.2f"%(c_invert))  
+
+               
         
         # B4.0.7 Determine Properties for the First Layer
         dx_init = r_curve[layer_s] * (sin(th_start) - sin(th[layer_s]))
         dz_init = d_start - d[layer_s]   
         dt_init = 2 / g[layer_s] * log(ss_start / c[layer_s])        
-        dt_init += 2 / g[layer_s] * log((1 + sin(th[layer_s])) / (1 + sin(th_start)))       
+        dt_init += 2 / g[layer_s] * log((1 + sin(th[layer_s])) / (1 + sin(th_start)))      
+        
        
        
         # B4.0.8 Accumulate From the Start Layer
@@ -229,10 +233,12 @@ class SSP:
         sum_dt = np.cumsum(dt[layer_s:])
         sum_dz = np.cumsum(dz[layer_s:])
         
+        
         # B4.0.9 Offset Cumulative Sums by Values From the Start Layer
         sum_dx -= dx_init
         sum_dz -= dz_init
         sum_dt -= dt_init
+        
         
         # B4.0.10  Determine the Number of Boundaries Crossed and the End Layer Index       
         n_bounds =  sum( twtt >= sum_dt[:-1])
@@ -244,8 +250,8 @@ class SSP:
             t = twtt - sum_dt[n_bounds-1]
         else:
             raise RuntimeError('SSP start depth in same layer as reflector - not yet implemented')
-        
-        th_end = 2 * arctan(tanh(-t * g[layer_e] / 4 + arctanh(tan(th[layer_e] / 2))))       
+      
+        th_end = 2 * arctan(tanh(-t * g[layer_e] / 4 + arctanh(tan(th[layer_e] / 2))))            
         dx_end = r_curve[layer_e] * (sin(th_end) - sin(th[layer_e]))
         dz_end = -r_curve[layer_e] * (cos(th_end) - cos(th[layer_e]))
 
@@ -256,7 +262,7 @@ class SSP:
         # B4.0.13 Determining Depth and Radial Distance
         if swap:
             rad_dist = -rad_dist
-        # # # B4.0.14 Return Results as Tuple        
+        # # B4.0.14 Return Results as Tuple        
         return (depth, rad_dist, layer_s, layer_e)
     
     # B4.1 Calculating the TWTT for a Given Depth
@@ -297,6 +303,7 @@ class SSP:
         # B4.0.6 Calculate Reversal Sound Speed
         c_invert = 1/ray_c
         # print( "Inversion Sound Speed: %.2f"%(c_invert))
+        
 
         # B4.0.7 Determine Properties for the First Layer
         dx_init = r_curve[layer_s] * (sin(th_start) - sin(th[layer_s]))
@@ -319,16 +326,17 @@ class SSP:
         # B4.1.1 Determine the Number of Boundaries Crossed and the End Layer Index
         layer_e = sum(depth >= np.cumsum(dz))
         n_bounds = layer_e - layer_s
+        
         # B4.1.2 Determine the Vertical Distance Traversed in the Last Layer
         dz_e = depth - d[layer_e]
        
-        # B4.1.3 Determine the Sound Speed at the Final Depth
+        # B4.1.3 Determine the Sound Speed at the Final Depths
         c_e = c[layer_e] + g[layer_e] * dz_e
         # B4.1.4 Determine the Depression Angle at the Final Depth
         th_end = arccos(ray_c * c_e)
         
         # B4.1.5 Determine the final TWTT and dx      
-        dt_e = (dz_e / sin(th[layer_e])) / c[layer_e]*2
+        dt_e = (dz_e / sin(th[layer_e])) / c[layer_e] * 2
         dx_end =  r_curve[layer_e] * (sin(th_end) - sin(th[layer_e]))
 
         # B4.1.6 Determine the Total Two Way Travel Time
