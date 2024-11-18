@@ -162,7 +162,7 @@ class SSP:
         # B3.14 Extending the Profiles to Full Ocean Depth    
 
         if self.proc_depth[-1] < 12000:
-            self.proc_depth = np.append(self.proc_depth,12000)
+            self.proc_depth = np.append(self.proc_depth,12000)            
             self.proc_ss = np.append(self.proc_ss, self.proc_ss[-1] \
                         + 0.017 * (12000 - self.proc_depth[-2]))          
             self.g = np.append(self.g,0.017)   
