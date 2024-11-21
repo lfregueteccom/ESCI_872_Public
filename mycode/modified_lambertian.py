@@ -5,26 +5,27 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
 # C5.0 Create the Function `modified_lambertian`
-def modified_lambertian( ..., ..., ... ):
-    bs = ...
+def modified_lambertian( th, s_b, verbose ):
+    bs = 0
     n_bot=len(s_b[0])
 
+
     # C5.1 Convert the Depression Angles to Incidence Angles
-    ...
+    th = np.tile(pi/2 - th, (n_bot,1))
     
     # C5.2 Determine the Lambertian Component
     rough = s_b[1].reshape(n_bot,1)
     bs_lambertian = rough+10*log10(cos(th)**2)
 
     # C5.3 Determine the Specular Component
-    spec = ... .reshape(...)
-    crit = ...
+    spec = s_b[2].reshape(n_bot,1)
+    crit = s_b[3].reshape(n_bot,1)
     bs_specular = spec * (1 + cos(pi * th / crit)) / 2
-    r_CA=abs(...)>=crit
-    bs_specular[...]=0
+    r_CA=abs(th) >= crit
+    bs_specular[r_CA]=0
     
     # C5.4 Total Backscatter Angular Response 
-    bs=...+...
+    bs = bs_lambertian + bs_specular
     
     if verbose:
         
