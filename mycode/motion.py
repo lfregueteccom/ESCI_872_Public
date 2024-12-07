@@ -123,15 +123,14 @@ class Motion:
 
         Rz = np.array([[cos(att[2]), -sin(att[2]), 0],
                        [sin(att[2]),  cos(att[2]), 0],
-                       [0          ,  0          , 1]])
-        
-
+                       [0          ,  0          , 1]])       
         return Rz@Ry@Rx
     
     def geo_reference_la(self, time = datetime.fromtimestamp(0, timezone.utc), la = np.array([[0],[0],[0]])):
         R = self.get_rotation_matrix(time)
         la_n = R@la
         return la_n
+
         
 #     def pos_to_rp(self, time = datetime.fromtimestamp(0, timezone.utc), pos = np.array([]), la = np.array([])):
 #         la_n = self.geo_reference_la(time, la) #Already done in student's case (2021, not after)

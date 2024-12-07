@@ -18,38 +18,75 @@ from mycode.ping import Ping
 from mycode.om_math import Rx, Ry, Rz
 from numpy.linalg import norm
 
-# D0.1 Add the Current Folder To the Path
 
+# D0.1 Add the Current Folder To the Path
+sys.path.append(os.getcwd())
+abs_path = os.path.abspath(os.path.curdir)
 
 # D1 Defining the Vessel - from A0.1 Class Initialization and Attributes
+vessel = Vessel()
+vessel.metadata["name"]="USNS Henson"
+vessel.metadata["owned_by"]="United States Navy"
+vessel.metadata["operated_by"]="United States Navy"
+vessel.metadata["pos_source"]="NavCom (C-Nav)"
+vessel.metadata["sonar"]="Kongsberg EM710"
+vessel.metadata["mru"]="Applanix POS/MV 320"
+vessel.metadata["loa"]=100
+vessel.wl = -2.59
+vessel.lever_arm_trans = np.asarray([16.26, -1.75, 4.15]).reshape((3, 1))
+vessel.lever_arm_rec = np.array([14.82, -2.01, 4.17]).reshape((3, 1))
+vessel.lever_arm_pos = np.array([-5.73, -0.12, -30.00]).reshape((3, 1))
+vessel.lever_arm_mru = np.array([0, 0, 0]).reshape((3, 1))
 
 
 # D2 Representing the Transmit and Receive Array
+tx_ideal = np.array([[1],[0],[0]])
+rx_ideal = np.array([[0],[1],[0]])
 
 # D2.0 Representing the Transmit and Receive Array - Reality is Not Ideal
+ma_tx=np.array([0.127,1.024,359.957-360])*pi/180  # Tx Mount angles 
+ma_rx=np.array([0.101,0.894,0.065])*pi/180    # Rx Mount angles 
 
 # D3 Parameters for Beam Forming
-
+ss_tx=1543.7                       
+beam_select=391  
 # D4 Get the Positioning Data
+positions = Position()
+positions.read_jhc_file(os.path.join(abs_path,"Data","Lab_A_GNSS.txt"))
 
 # D4.0 Squaring the Positioning Data Away
+positions.carto_project("UTM", "ortho")
 
 # D5 Get the Motion Data
+motions = Motion()
+motions.read_jhc_file(os.path.join(abs_path,"Data","Lab_A_MRU.txt"))
 
 # D6 Get the Sound Speed Data
+ssp = SSP()
+ssp.read_jhc_file(os.path.join(abs_path,"Data","Lab_A_SVP.txt"))
 
 # D7 Get the Ping Data
+ping = Ping()
+ping.read(os.path.join(abs_path,"Data","DATA_PING_4170.txt"))
 
 # D7.0 Indexing the Ping Data
+i = ping.get_beam_index(beam_select)
 
 # D8 Timing it Right
+t_tx = ping.tx_time+ping.tx_t_offset_beam[i]
+t_rx = t_tx+timedelta(0,ping.twtt[i])
 
 # D9.0 Getting Orientation Vectors
+att_tx = motions.get_motion(t_tx)
+att_rx = motions.get_motion(t_rx)
 
 # D9.1 Getting Orientation Matrices
+R_tx = motions.get_rotation_matrix(t_tx)
+R_rx = motions.get_rotation_matrix(t_rx)
 
 # D10 Finding out Where We Are 
-
+geo_tx_ant = positions.get_position(t_tx)
+geo_rx_ant = positions.get_position(t_rx)
 # D11 Georeferencing the Lever Arms
 
 # D12 Calculating the Reference Position RP

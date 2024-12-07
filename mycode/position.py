@@ -414,7 +414,17 @@ class Position:
             
             # Add the string to the metadata
             self.metadata['proj_str'] = proj_str
+    #D10 Finding out Where We Are
+    def get_position(self, time = datetime.fromtimestamp(0, timezone.utc)):
+        pos = np.zeros(3)
+        times = np.array([e.timestamp() for e in self.times])
+        pos[0] = np.interp(time.timestamp(), times, self.proj_pos[0])
+        pos[1] = np.interp(time.timestamp(), times, self.proj_pos[1])
+        pos[2] = np.interp(time.timestamp(), times, self.proj_pos[2])
+        return pos
 
+
+# FUNCTION OUTSIDE OF THE POSITION CLASS
 # Creating a function for reading ZDA time message            
 def ParseNMEA0183_ZDA( dt_str):
     obs = dt_str.split(',')
@@ -427,5 +437,6 @@ def ParseNMEA0183_ZDA( dt_str):
         int( obs[1][4:6]),
         int(obs[1][7:])*10000)
     return time        
-        
+
+
         

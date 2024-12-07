@@ -406,4 +406,115 @@ class SSP:
         layer = sum( d_interest >= d) - 1
         ss = c[layer]+(d_interest-d[layer])*g[layer]
         return ss
-    
+    # D6 Get the Sound Speed Data
+    def read_jhc_file(self, fullpath):
+        # Check to see whether data already exists in the object
+
+        if self.obs_depths:
+            raise RuntimeError('SSP object already contains a profile')
+
+        # Check the File's existence
+        if os.path.exists(fullpath):
+            self.metadata["Source File"] = fullpath
+            print('Opening sound speed profile data file:' + fullpath)
+        else:  # Raise a meaningful error
+            raise RuntimeError('Unable to locate the input file' + fullpath)
+
+        # Open, read and close the file
+        svp_file = open(fullpath)
+        svp_content = svp_file.read()
+        svp_file.close
+
+        # Tokenize the contents
+        svp_lines = svp_content.splitlines()
+        self.obs_time = datetime.fromtimestamp(
+            float(svp_lines[1].split()[0]), timezone.utc)
+        self.log_time = datetime.fromtimestamp(
+            float(svp_lines[2].split()[0]), timezone.utc)
+        self.obs_latitude = float(svp_lines[3].split()[0])
+        self.obs_longitude = float(svp_lines[3].split()[1])
+        self.vessel_latitude = float(svp_lines[4].split()[0])
+        self.vessel_longitude = float(svp_lines[4].split()[1])
+        self.metadata["count"] = int(svp_lines[5].split()[0])
+
+        count = 0  # initialize the counter for the number of rows read
+
+        for svp_line in svp_lines[16:]:
+            observations = svp_line.split()  # Tokenize the stringS
+            self.obs_sample.append(float(observations[0]))
+            self.obs_depths.append(float(observations[1]))
+            self.obs_ss.append(float(observations[2]))
+            count += 1
+
+        if self.metadata["count"] != count:
+            raise RuntimeError('Nr of Samples read ('+str(count) +
+                            ') does not match metadata count (' +
+                            str(self.metadata["count"])+')')
+
+        # Process the data - in the jhc data files this is already a one-way profile,
+        # this just for illustration
+        array_ss = np.zeros((count, 3))
+
+        # Sort the data samples by depth
+        sorted_ss = sorted(zip(self.obs_depths, self.obs_ss))
+
+        layer = 0
+        for d, ss in sorted_ss:
+            array_ss[[layer], [0]] = d
+            array_ss[[layer], [1]] = ss
+            layer += 1
+
+        # Identify all the depths for which there are multiple observations
+        mask = np.full((count, 1), True)
+        mask[1:, [0]] = np.diff(array_ss[:, [0]], axis=0) != 0
+
+        # Remove the duplicates - You really should get statistical representations here
+        # but to keep this short just remove the duplicates
+        array_ss = array_ss[mask[:, 0], ...]
+
+        # Determine the gradients - Note the indexing: the gradient of the first layer 
+        # is contained at the same index as the data for the TOP of the layer.
+        array_ss[0:-1, [2]] = np.diff(array_ss[:, [1]],
+                                        axis=0)/np.diff(array_ss[:, [0]], axis=0)
+
+        # Estimate gradient for last layer assuming that the temperature and salinity remain the same
+        # gradient solely a function of pressure (depth)
+        array_ss[-1, [2]] = 0.017
+
+        # Extend to 12000 m if necesarry - this is to get around some manufcturers requirements
+        if self.obs_depths[-1] < 12000:
+            ss = array_ss[-1:, [1]] + array_ss[-1:, [2]] \
+            * (12000-array_ss[-1:, [0]])
+            array_ss = np.vstack((array_ss, [12000, ss, 0.017]))
+
+        # Make sure that the last gradient is 0.017
+        array_ss[-1,2] = 0.017
+
+        # Extend to 0 m if necesarry - assume well mixed
+        if self.obs_depths[0] > 0:
+            array_ss = np.vstack(
+                ([0, array_ss[0, [1]], 0.], array_ss))
+
+        # Step 5 Create a look-up array of twtts for each full layer
+        # Allows for great gain in efficiency (do not have to calculate for each ping)
+        self.twtt_layer = np.zeros((count, 1))
+
+        for layer in range(0,self.metadata["count"]-1):
+            if array_ss[layer, [2]] == 0:
+                self.twtt_layer[layer] = 2 * \
+                    (array_ss[layer+1, [0]] - array_ss[layer, [0]])/ \
+                    array_ss[layer, [1]]
+            else:
+                self.twtt_layer[layer] = 2 / array_ss[layer, [2]] * \
+                log(array_ss[layer+1, [1]]/array_ss[layer, [1]])
+
+        self.proc_ss = array_ss[:,1]
+        self.proc_depth = array_ss[:,0]
+        self.g = np.diff(self.proc_ss)/np.diff(self.proc_depth)
+        self.g[self.g == 0] = .24
+
+        # Updating the Profile
+        for i in range(1,len(self.g)):
+            self.proc_ss[i]=self.proc_ss[i-1]+(self.proc_depth[i] - self.proc_depth[i-1])*self.g[i-1]
+
+        

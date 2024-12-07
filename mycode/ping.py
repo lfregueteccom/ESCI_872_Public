@@ -167,8 +167,8 @@ class Ping:
         s += 'Pitch    : ' + str(self.tx_pitch*180/pi) + u"\N{DEGREE SIGN}" + '\n'
         s += 'Headding : ' + str(self.tx_heading*180/pi) + u"\N{DEGREE SIGN}" + '\n'
         s += 'Heave    : ' + str(self.tx_heave) + ' [m]\n'
-        s += 'Tx Time  : ' + self.tx_time.strftime("%H:%M:%S  %B %-d, %Y") + '\n'
-        
+        # s += 'Tx Time  : ' + self.tx_time.strftime("%H:%M:%S  %B %-d, %Y") + '\n'
+        s += 'Tx Time  : ' + self.tx_time.strftime("%H:%M:%S  %B ") + str(self.tx_time.day) + self.tx_time.strftime(", %Y") +'\n' # modified to fix error with strftime platforms incompatibility
         s += '\n'
         s += str(len(self.tilt_angle)) + ' Sectors --- \n'
        
