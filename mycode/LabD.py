@@ -67,7 +67,7 @@ ssp.read_jhc_file(os.path.join(abs_path,"Data","Lab_A_SVP.txt"))
 
 # D7 Get the Ping Data
 ping = Ping()
-ping.read(os.path.join(abs_path,"Data","DATA_PING_4170.txt"))
+ping.read(os.path.join(abs_path,"Data","data_ping_4170.txt"))
 
 # D7.0 Indexing the Ping Data
 i = ping.get_beam_index(beam_select)
@@ -88,49 +88,105 @@ R_rx = motions.get_rotation_matrix(t_rx)
 geo_tx_ant = positions.get_position(t_tx)
 geo_rx_ant = positions.get_position(t_rx)
 # D11 Georeferencing the Lever Arms
+geo_pos_la_tx = motions.geo_reference_la(t_tx, vessel.lever_arm_pos)
+geo_pos_la_rx = motions.geo_reference_la(t_rx, vessel.lever_arm_pos)
 
 # D12 Calculating the Reference Position RP
+geo_pos_rp_tx = np.zeros((3,1))
+geo_pos_rp_rx = np.zeros((3,1))
+
+geo_pos_rp_tx[0] =  geo_tx_ant[0] - geo_pos_la_tx[1]
+geo_pos_rp_tx[1] =  geo_tx_ant[1] - geo_pos_la_tx[0]
+geo_pos_rp_tx[2] = -geo_tx_ant[2] - geo_pos_la_tx[2]
+
+geo_pos_rp_rx[0] =  geo_rx_ant[0] - geo_pos_la_rx[1]
+geo_pos_rp_rx[1] =  geo_rx_ant[1] - geo_pos_la_rx[0]
+geo_pos_rp_rx[2] =  -geo_rx_ant[2] - geo_pos_la_rx[2]
 
 # D13 The Separation of Shot and Receive
+geo_pos_diff = geo_pos_rp_rx - geo_pos_rp_tx
 
 # D14 Course Over Ground
+cog = arctan2(geo_pos_diff[0],geo_pos_diff[1])
+
+temp = geo_pos_diff.copy()
+geo_pos_diff[0] = temp[1]
+geo_pos_diff[1] = temp[0]
 
 # D15 Drift Angle
+da=(cog - att_tx[2])[0]
+while da < -pi:
+     da += 2 * pi
+while da > pi:
+    da -= 2 * pi
     
 # D16 Heading Change
+d_h=att_rx[2]-att_tx[2]
 
 # D17.0 Aligning the 1-Axis
+ref_pos_diff = Rz(-att_tx[2])@geo_pos_diff
 
 # D17.1 New Transmit Transducer Lever Arm
+new_la_tx = Ry(att_tx[1])@Rx(att_tx[0])@vessel.lever_arm_trans
 
 # D17.2 New Receive Transducer Lever Arm
+new_la_rx = Rz(d_h)@Ry(att_rx[1])@Rx(att_rx[0])@vessel.lever_arm_rec + ref_pos_diff
 
 # D17.3 Virtual Transducer location; Why colocation?
+new_virtual_trans = (new_la_rx + new_la_tx)/2
 
 # D17.4 Virtual Transducer location: Vertical Placement
+virtual_trans = new_virtual_trans.copy()
+virtual_trans[2] += (att_tx[3] + att_rx[3]) / 2 - vessel.wl
 
 # D18.1 Align Transducer Arrays to the Vessel Reference Frame
+tx_mount = Rz(ma_tx[2])@Ry(ma_tx[1])@Rx(ma_tx[0])@tx_ideal
+rx_mount = Rz(ma_rx[2])@Ry(ma_rx[1])@Rx(ma_rx[0])@rx_ideal
 
 # D.18.2 Correct for Orientation at Transmit
+tx=Rz(0)@Ry(att_tx[1])@Rx(att_tx[0])@tx_mount
 
 # D.18.3 Correct for Orientation at Receive
+rx=Rz(d_h)@Ry(att_rx[1])@Rx(att_rx[0])@rx_mount
 
 # D18.4 Calculate the Non-Orthogonality angle non_ortho
+non_ortho=-arcsin(float(tx.T@rx))
 
 # D18.5 Create a New Orthonormal Basis XYZ'
+xp=tx.copy()
+zp=np.cross(tx.T,rx.T).T
+zp/=norm(zp)
+yp=np.cross(zp.T,xp.T).T
+yp/=norm(yp)
+Tp = np.hstack((xp, yp, zp)) 
 
 # D18.6.0  Formula for Intersection of Non-Orthogonal Arrays
+y1=sin(-ping.steer_rx[i]) / cos(non_ortho)
+y2=sin(ping.steer_tx[i]) * tan(non_ortho)
+radial=sqrt((y1 + y2) ** 2 + sin(ping.steer_tx[i]) ** 2)
 
 # D18.6.1  Formulate the Beam Vector `bv_p` in XYZ'
+bv_p=np.array([[sin(ping.steer_tx[i])],[y1 + y2],[sqrt(1-radial**2)]])
 
 # D18.7 Transform the Beam Vector to Geo Referenced Space
+bv_g=Tp@bv_p 
 
 # D.18.8 Determine the Depression Angle of the Beam Vector
+beam_th=float(arctan(bv_g[2] / sqrt(sum(bv_g[0:2] ** 2))))
 
 # D18.9 Determine the Azimuth of the Beam Vector
+beam_az=float(arctan2(bv_g[1],bv_g[0]))
 
 # D19 At last: Ray Tracing
+depth,hor_dist,_,_ = ssp.ray_trace_twtt(virtual_trans[2],beam_th,ss_tx,ping.twtt[i])
 
 # D20 Positioning the Bottom Strike Relative to the Virtual Transducer
+bot_vx = np.zeros((3,1))
+bot_vx[0] = virtual_trans[0] + hor_dist * cos(beam_az)
+bot_vx[1] = virtual_trans[1] + hor_dist * sin(beam_az)
+bot_vx[2] = depth   
 
 # D21 Positioning the Bottom Strike Relative to the RP at Transmit
+bot_rp_tx = bot_vx.copy()
+bot_rp_tx[0] -= virtual_trans[0]
+bot_rp_tx[1] -= virtual_trans[1]
